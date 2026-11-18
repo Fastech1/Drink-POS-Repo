@@ -16,10 +16,12 @@ button{padding:12px;border:none;border-radius:10px;font-weight:bold;cursor:point
 .btn-white{background:#fff;color:#000}
 .btn-red{background:#ff4444;color:#fff}
 .btn-dark{background:#333;color:#fff}
+.btn-pack{background:#FFD700;color:#000;padding:8px 10px;font-size:13px}
+.btn-pc{background:#25D366;color:#000;padding:8px 10px;font-size:13px}
 .product{display:flex;justify-content:space-between;align-items:center;background:#2a2a2a;padding:12px;border-radius:12px;margin:8px 0}
 .product b{font-size:16px}
 .product small{color:#aaa}
-.cart-item{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #333}
+.cart-item{padding:10px 0;border-bottom:1px solid #333}
 .tabs{position:fixed;bottom:0;left:0;right:0;background:#111;display:flex;border-top:1px solid #333}
 .tabs button{flex:1;background:none;color:#aaa;padding:14px 0;font-size:13px}
 .tabs button.active{color:#25D366;border-top:3px solid #25D366}
@@ -33,7 +35,7 @@ button{padding:12px;border:none;border-radius:10px;font-weight:bold;cursor:point
 label{font-size:13px;color:#aaa;text-align:left;display:block}
 .editBox{background:#333;padding:10px;border-radius:10px;margin-top:8px}
 .editBox input{background:#444}
-/* MUST BE LAST - THIS FIXES THE STUCK MODAL */
+.qtyBtn{background:#444;color:#fff;padding:4px 10px;border-radius:8px;font-size:16px}
 .hidden{display:none !important}
 </style>
 </head>
@@ -57,7 +59,8 @@ label{font-size:13px;color:#aaa;text-align:left;display:block}
 
 <div id="tab-sell">
 <div class="card">
-<h3>🧾 Sell Drinks</h3>
+<h3>🧾 Sell Drinks - Tap Pack or Piece</h3>
+<p style="font-size:12px;color:#aaa;margin:0">Pack = full crate. Pc = single bottle.</p>
 <input id="search" placeholder="Search drink..." oninput="renderProducts()">
 <div id="productList"></div>
 </div>
@@ -83,7 +86,6 @@ label{font-size:13px;color:#aaa;text-align:left;display:block}
 <input id="newPacks" type="number" placeholder="Packs e.g. 2">
 <input id="newPieces" type="number" placeholder="Pieces e.g. 5">
 </div>
-<p style="font-size:12px;color:#888">Example: 2 packs + 5 pieces = if pack is 24, total = 53 pieces</p>
 <button class="btn-green" onclick="addProduct()">Add Drink</button>
 </div>
 <div class="card">
@@ -116,7 +118,6 @@ label{font-size:13px;color:#aaa;text-align:left;display:block}
 </div>
 </div>
 
-<!-- RECEIPT MODAL - TAP OUTSIDE TO CLOSE -->
 <div id="receiptModal" class="modal hidden" onclick="if(event.target===this) closeReceipt()">
 <div class="modal-box">
 <div style="text-align:right"><button onclick="closeReceipt()" style="background:#eee;color:#000;padding:6px 12px;border-radius:20px">✕ Close</button></div>
@@ -141,16 +142,8 @@ let shop = JSON.parse(localStorage.getItem('pos_shop')||'null');
 let lastReceipt = null;
 let editingIndex = -1;
 
-function hardReset(){
-  if(confirm('Reset app? This will clear shop name, products and sales.')){
-    localStorage.clear();
-    location.reload();
-  }
-}
-// Force close modal on load - prevents stuck screen
-document.addEventListener('DOMContentLoaded', function(){
-  document.getElementById('receiptModal').classList.add('hidden');
-});
+function hardReset(){ if(confirm('Reset app? This will clear shop name, products and sales.')){ localStorage.clear(); location.reload(); } }
+document.addEventListener('DOMContentLoaded', function(){ document.getElementById('receiptModal').classList.add('hidden'); });
 
 if(products.length===0){
   products = [
@@ -182,7 +175,8 @@ function renderProducts(){
   products.forEach((p,i)=>{
     if(q && !p.name.toLowerCase().includes(q)) return;
     let low = totalPieces(p)<=3 ? '<span class="badge">LOW</span>' : '';
-    html+='<div class="product"><div><b>'+p.name+'</b><br><small>₦'+p.price+' / pc • '+formatStock(p)+' '+low+'</small></div><button class="btn-green" style="width:auto" onclick="addToCart('+i+')">+ Add</button></div>';
+    let packPrice = p.price * p.packSize;
+    html+='<div class="product"><div style="flex:1"><b>'+p.name+'</b><br><small>₦'+p.price+' / pc • 1 Pack ('+p.packSize+' pcs) = ₦'+packPrice.toLocaleString()+'<br>'+formatStock(p)+' '+low+'</small></div><div style="display:flex;flex-direction:column;gap:6px"><button class="btn-pack" onclick="addToCartPack('+i+')">+ 1 Pack 📦</button><button class="btn-pc" onclick="addToCartPiece('+i+')">+ 1 Pc 🧃</button></div></div>';
   });
   document.getElementById('productList').innerHTML=html||'<p>No drink found</p>';
   let m='';
@@ -220,135 +214,38 @@ function addProduct(){
   alert('Drink added!');
 }
 function deleteProduct(i){ if(confirm('Delete '+products[i].name+'?')){ products.splice(i,1); saveAll(); renderAll(); } }
-function addToCart(i){ if(totalPieces(products[i])<=0){alert('Out of stock!');return;} let f=cart.find(c=>c.index===i); if(f) f.qty++; else cart.push({index:i,qty:1}); renderCart(); }
-function renderCart(){ let html=''; let total=0; cart.forEach((c,ci)=>{ let p=products[c.index]; let sub=p.price*c.qty; total+=sub; html+='<div class="cart-item"><span>'+p.name+' x '+c.qty+'</span><span>₦'+sub+' <button onclick="removeFromCart('+ci+')" style="background:#ff4444;color:#fff;padding:4px 8px">x</button></span></div>'; }); document.getElementById('cartList').innerHTML=html||'<p style="color:#aaa">Cart is empty.</p>'; document.getElementById('cartTotal').innerText='Total: ₦'+total.toLocaleString(); }
-function removeFromCart(ci){ cart.splice(ci,1); renderCart(); }
-function clearCart(){ cart=[]; renderCart(); }
 
-function checkout(){
-  if(cart.length===0){alert('Cart empty');return;}
-  let total=0; let items=[];
-  cart.forEach(c=>{
-    let p=products[c.index]; total+=p.price*c.qty; items.push({name:p.name, qty:c.qty, price:p.price, sub:p.price*c.qty});
-    let remaining = totalPieces(p) - c.qty;
-    if(remaining<0) remaining=0;
-    p.packs = Math.floor(remaining / p.packSize);
-    p.pieces = remaining % p.packSize;
-  });
-  let method=document.getElementById('payMethod').value;
-  let cust=document.getElementById('customerName').value.trim()||'Walk-in';
-  let now=new Date();
-  let sale={date:now.toLocaleString(), timestamp:now.toISOString(), items:items, total:total, method:method, customer:cust};
-  sales.unshift(sale);
-  if(method.includes('Credit')){ debts.unshift({name:cust, amount:total, note:items.map(i=>i.name+' x '+i.qty).join(', '), date:now.toLocaleDateString(), paid:false}); }
-  saveAll(); cart=[]; document.getElementById('customerName').value=''; renderAll();
-  showReceipt(sale);
+// --- CART WITH PACKS + PIECES ---
+function getCartItem(i){
+  let f=cart.find(c=>c.index===i);
+  if(!f){ f={index:i, packs:0, pieces:0}; cart.push(f); }
+  return f;
 }
+function addToCartPack(i){
+  let p=products[i];
+  let inCart = cart.find(c=>c.index===i);
+  let used = inCart ? (inCart.packs*p.packSize + inCart.pieces) : 0;
+  if(totalPieces(p) - used < p.packSize){ alert('Not enough stock for 1 full pack! Only '+(totalPieces(p)-used)+' pcs left.'); return; }
+  let f=getCartItem(i); f.packs++;
+  renderCart();
+}
+function addToCartPiece(i){
+  let p=products[i];
+  let inCart = cart.find(c=>c.index===i);
+  let used = inCart ? (inCart.packs*p.packSize + inCart.pieces) : 0;
+  if(totalPieces(p) - used < 1){ alert('Out of stock!'); return; }
+  let f=getCartItem(i); f.pieces++;
+  // Auto convert pieces to pack when it reaches packSize
+  if(f.pieces >= p.packSize){ f.packs += Math.floor(f.pieces / p.packSize); f.pieces = f.pieces % p.packSize; }
+  renderCart();
+}
+function cartTotalPieces(c){ let p=products[c.index]; return c.packs*p.packSize + c.pieces; }
+function cartSubtotal(c){ let p=products[c.index]; return cartTotalPieces(c) * p.price; }
 
-function normalizeItems(sale){
-  if(!sale.items) return [];
-  return sale.items.map(it=>{
-    if(typeof it === 'string'){ return {name: it, qty: 1, price: 0, sub: 0, isOld: true}; }
-    return it;
-  });
-}
-function showReceipt(sale){
-  lastReceipt=sale;
-  document.getElementById('receiptTime').innerText = sale.date;
-  let items = normalizeItems(sale);
-  let shopName = shop ? shop.name : 'My Shop';
-  let shopPhone = shop ? (shop.phone||'') : '';
-  let lines = [];
-  lines.push(shopName);
-  if(shopPhone) lines.push(shopPhone);
-  lines.push('--------------------------------');
-  lines.push('Date: ' + sale.date);
-  lines.push('Customer: ' + sale.customer);
-  lines.push('Payment: ' + sale.method);
-  lines.push('--------------------------------');
-  items.forEach(it=>{
-    if(it.isOld){ lines.push(it.name); }
-    else { lines.push(it.name + ' x' + it.qty + '  = N' + it.sub.toLocaleString()); }
-  });
-  lines.push('--------------------------------');
-  lines.push('TOTAL: N' + sale.total.toLocaleString());
-  lines.push('');
-  lines.push('Thank you for your patronage!');
-  lines.push('Please come again');
-  lines.push('Receipt No: ' + (sale.timestamp||'').slice(0,19).replace(/[-T:]/g,''));
-  document.getElementById('receiptHtml').innerText = lines.join('\n');
-  drawReceiptCanvas(sale, items, shopName, shopPhone);
-  document.getElementById('receiptModal').classList.remove('hidden');
-}
-function drawReceiptCanvas(sale, items, shopName, shopPhone){
-  try{
-    let canvas=document.getElementById('receiptCanvas');
-    let ctx=canvas.getContext('2d');
-    canvas.height = 380 + items.length*30;
-    canvas.width = 340;
-    ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle='#000'; ctx.textAlign='center';
-    ctx.font='bold 20px sans-serif'; ctx.fillText(shopName.substring(0,25), 170, 30);
-    ctx.font='12px sans-serif'; ctx.fillText(shopPhone||'', 170, 50);
-    ctx.fillText('--------------------------------', 170, 68);
-    ctx.textAlign='left';
-    ctx.fillText('Date: '+sale.date, 15, 88);
-    ctx.fillText('Customer: '+sale.customer, 15, 106);
-    ctx.fillText('Payment: '+sale.method, 15, 124);
-    ctx.fillText('--------------------------------', 170, 142);
-    ctx.font='bold 12px sans-serif'; ctx.fillText('ITEM', 15, 160); ctx.fillText('AMOUNT', 240, 160);
-    ctx.font='12px sans-serif';
-    items.forEach((it, idx)=>{
-      let y=182+idx*26;
-      let label = it.isOld ? it.name.substring(0,28) : (it.name.substring(0,18) + ' x' + it.qty);
-      ctx.fillText(label, 15, y);
-      if(!it.isOld) ctx.fillText('N'+it.sub.toLocaleString(), 240, y);
-    });
-    let y = 190 + items.length*26;
-    ctx.fillText('--------------------------------', 170, y);
-    ctx.font='bold 16px sans-serif'; ctx.fillText('TOTAL: N'+sale.total.toLocaleString(), 15, y+28);
-    ctx.font='12px sans-serif'; ctx.textAlign='center';
-    ctx.fillText('Thank you for your patronage!', 170, y+55);
-    ctx.fillText('Please come again', 170, y+73);
-  }catch(e){ console.log('Canvas error', e); }
-}
-function downloadReceipt(){
-  if(!lastReceipt) return;
-  let canvas=document.getElementById('receiptCanvas');
-  let a=document.createElement('a');
-  a.href=canvas.toDataURL('image/png');
-  a.download='receipt-'+(lastReceipt.timestamp||'now').slice(0,10)+'-'+lastReceipt.total+'.png';
-  a.click();
-}
-function shareReceiptImage(){ downloadReceipt(); alert('Receipt downloaded! Now share it from your gallery to WhatsApp.'); }
-function closeReceipt(){
-  document.getElementById('receiptModal').classList.add('hidden');
-  // Extra force - in case CSS fails
-  document.getElementById('receiptModal').style.display='none';
-  setTimeout(function(){ document.getElementById('receiptModal').style.display=''; }, 100);
-}
-
-function renderSales(){
-  let today=new Date().toLocaleDateString();
-  let todaySales=sales.filter(s=>s.date.includes(today));
-  let todayTotal=todaySales.reduce((a,s)=>a+s.total,0);
-  document.getElementById('todayTotal').innerText='Today: ₦'+todayTotal.toLocaleString()+' • '+todaySales.length+' sales';
-  document.getElementById('salesSummary').innerHTML='Today: <b>₦'+todayTotal.toLocaleString()+'</b><br>Total all time: <b>₦'+sales.reduce((a,s)=>a+s.total,0).toLocaleString()+'</b> • '+sales.length+' sales';
-  let html='';
-  sales.slice(0,20).forEach((s,idx)=>{
-    html+='<div style="border-bottom:1px solid #333;padding:10px 0;cursor:pointer" onclick="showReceiptByIndex('+idx+')"><b>₦'+s.total.toLocaleString()+'</b> - '+s.method+' - '+s.customer+'<br><small>🕒 '+s.date+'<br>'+normalizeItems(s).map(i=>i.isOld?i.name:i.name+' x '+i.qty).join(' | ')+'<br><span style="color:#25D366">Tap to view receipt image →</span></small></div>';
-  });
-  document.getElementById('salesList').innerHTML=html||'No sales yet';
-}
-function showReceiptByIndex(idx){ showReceipt(sales[idx]); }
-function clearSales(){ if(confirm('Clear all sales?')){ sales=[]; saveAll(); renderAll(); } }
-function shareReport(){ let today=new Date().toLocaleDateString(); let ts=sales.filter(s=>s.date.includes(today)); let total=ts.reduce((a,s)=>a+s.total,0); let text='📊 '+(shop?shop.name:'My Shop')+' - Sales '+today+'\nTotal: ₦'+total+'\nSales: '+ts.length; window.open('https://wa.me/?text='+encodeURIComponent(text)); }
-function addDebt(){ let n=document.getElementById('debtName').value.trim(); let a=parseInt(document.getElementById('debtAmount').value); if(!n||!a){alert('Enter name and amount');return;} debts.unshift({name:n,amount:a,note:document.getElementById('debtNote').value,date:new Date().toLocaleDateString(),paid:false}); saveAll(); renderAll(); document.getElementById('debtName').value='';document.getElementById('debtAmount').value='';document.getElementById('debtNote').value=''; }
-function renderDebts(){ let total=debts.filter(d=>!d.paid).reduce((a,d)=>a+d.amount,0); document.getElementById('totalDebt').innerText='Total owing you: ₦'+total.toLocaleString(); let html=''; debts.forEach((d,i)=>{ html+='<div class="product"><div><b>'+d.name+'</b> '+(d.paid?'<span style="color:#25D366">PAID ✅</span>':'')+'<br><small>₦'+d.amount+' • '+(d.note||'')+' • '+d.date+'</small></div><div>'+(!d.paid?'<button class="btn-green" style="width:auto" onclick="markPaid('+i+')">Paid</button>':'')+' <button class="btn-red" style="width:auto" onclick="deleteDebt('+i+')">x</button></div></div>'; }); document.getElementById('debtList').innerHTML=html||'No debts'; }
-function markPaid(i){ debts[i].paid=true; saveAll(); renderAll(); }
-function deleteDebt(i){ debts.splice(i,1); saveAll(); renderAll(); }
-function renderAll(){ renderProducts(); renderCart(); renderSales(); renderDebts(); }
-init();
-</script>
-</body>
-</html>
+function renderCart(){
+  let html=''; let total=0;
+  cart.forEach((c,ci)=>{
+    if(cartTotalPieces(c)===0) return;
+    let p=products[c.index]; let sub=cartSubtotal(c); total+=sub;
+    let desc = '';
+    if(c.packs>0) desc += c.packs + ' Pack' + (c.packs>1?'s':'') + ' ('+(c.packs*p.packSize)+' pcs
