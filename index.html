@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Drink Shop POS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box}
+body{font-family:sans-serif;background:#0f0f0f;color:#fff;margin:0;padding:0;padding-bottom:90px}
+.header{background:#111;padding:15px;text-align:center;position:sticky;top:0;z-index:10;border-bottom:1px solid #333}
+.header h1{margin:0;font-size:22px}
+.header p{margin:4px;color:#25D366;font-weight:bold}
+.card{background:#1c1c1c;margin:12px;padding:14px;border-radius:14px}
+input,select{width:100%;padding:12px;margin:6px 0;border-radius:10px;border:none;font-size:16px;background:#2a2a2a;color:#fff}
+button{padding:12px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;font-size:15px}
+.btn-green{background:#25D366;color:#000;width:100%;margin-top:8px}
+.btn-white{background:#fff;color:#000}
+.btn-red{background:#ff4444;color:#fff}
+.btn-dark{background:#333;color:#fff}
+.product{display:flex;justify-content:space-between;align-items:center;background:#2a2a2a;padding:12px;border-radius:12px;margin:8px 0}
+.product b{font-size:16px}
+.product small{color:#aaa}
+.cart-item{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #333}
+.tabs{position:fixed;bottom:0;left:0;right:0;background:#111;display:flex;border-top:1px solid #333}
+.tabs button{flex:1;background:none;color:#aaa;padding:14px 0;font-size:13px}
+.tabs button.active{color:#25D366;border-top:3px solid #25D366}
+.badge{background:#ff4444;color:#fff;padding:2px 7px;border-radius:20px;font-size:12px}
+.total{font-size:22px;font-weight:bold;text-align:right}
+.setup{max-width:420px;margin:40px auto;padding:20px;text-align:center}
+.logo{font-size:60px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+
+<div id="setupScreen" class="setup">
+<div class="logo">🥤</div>
+<h1>Drink Shop POS</h1>
+<p>Your shop, on your phone.</p>
+<input id="shopNameInput" placeholder="Enter your shop name e.g. Chuks Cold Drinks">
+<input id="shopPhoneInput" placeholder="Shop phone number (optional)">
+<button class="btn-green" onclick="saveShop()">Start Selling →</button>
+<p style="color:#888;font-size:13px">You can change this later in Settings.</p>
+</div>
+
+<div id="mainApp" class="hidden">
+<div class="header">
+<h1 id="shopNameDisplay">My Drink Shop 🥤</h1>
+<p id="todayTotal">Today: ₦0</p>
+</div>
+
+<!-- SELL TAB -->
+<div id="tab-sell">
+<div class="card">
+<h3>🧾 Sell Drinks</h3>
+<input id="search" placeholder="Search drink... e.g. Coke" oninput="renderProducts()">
+<div id="productList"></div>
+</div>
+
+<div class="card">
+<h3>🛒 Cart</h3>
+<div id="cartList"><p style="color:#aaa">Cart is empty. Tap a drink to add.</p></div>
+<div class="total" id="cartTotal">Total: ₦0</div>
+<select id="payMethod">
+<option>Cash</option>
+<option>Transfer</option>
+<option>POS / Card</option>
+<option>Credit (Customer owes)</option>
+</select>
+<input id="customerName" placeholder="Customer name (for credit / receipt)">
+<button class="btn-green" onclick="checkout()">Checkout ✅</button>
+<button class="btn-white" style="width:100%;margin-top:8px" onclick="clearCart()">Clear Cart</button>
+</div>
+</div>
+
+<!-- PRODUCTS TAB -->
+<div id="tab-products" class="hidden">
+<div class="card">
+<h3>➕ Add New Drink</h3>
+<input id="newName" placeholder="Drink name e.g. Chivita">
+<input id="newPrice" type="number" placeholder="Price e.g. 1500">
+<input id="newStock" type="number" placeholder="Stock e.g. 24">
+<button class="btn-green" onclick="addProduct()">Add Drink</button>
+</div>
+<div class="card">
+<h3>📦 All Drinks</h3>
+<div id="manageList"></div>
+</div>
+</div>
+
+<!-- SALES TAB -->
+<div id="tab-sales" class="hidden">
+<div class="card">
+<h3>📊 Today's Sales</h3>
+<p id="salesSummary"></p>
+<button class="btn-white" onclick="shareReport()">Share Report on WhatsApp</button>
+</div>
+<div class="card">
+<h3>🧾 History</h3>
+<div id="salesList"></div>
+<button class="btn-red" style="width:100%;margin-top:10px" onclick="clearSales()">Clear History</button>
+</div>
+</div>
+
+<!-- DEBT TAB -->
+<div id="tab-debt" class="hidden">
+<div class="card">
+<h3>� دفتر Debt Book - People owing you</h3>
+<input id="debtName" placeholder="Customer name">
+<input id="debtAmount" type="number" placeholder="Amount owed e.g. 3500">
+<input id="debtNote" placeholder="What they bought e.g. 2 crates Coke">
+<button class="btn-green" onclick="addDebt()">Add Debt</button>
+</div>
+<div class="card">
+<h3>People Owing</h3>
+<div id="debtList"></div>
+<p id="totalDebt" style="font-weight:bold"></p>
+</div>
+</div>
+
+<!-- SETTINGS TAB -->
+<div id="tab-settings" class="hidden">
+<div class="card">
+<h3>⚙️ Shop Settings</h3>
+<input id="editShopName" placeholder="Shop name">
+<input id="editShopPhone" placeholder="Shop phone">
+<button class="btn-green" onclick="updateShop()">Save Shop Info</button>
+</div>
+<div class="card">
+<h3>🧾 Receipt Preview</h3>
+<p id="receiptPreview" style="white-space:pre-line;background:#fff;color:#000;padding:12px;border-radius:10px"></p>
+</div>
+</div>
+
+<div class="tabs">
+<button id="t-sell" class="active" onclick="showTab('sell')">🧾<br>Sell</button>
+<button id="t-products" onclick="showTab('products')">🥤<br>Drinks</button>
+<button id="t-sales" onclick="showTab('sales')">📊<br>Sales</button>
+<button id="t-debt" onclick="showTab('debt')">� دفتر<br>Debt</button>
+<button id="t-settings" onclick="showTab('settings')">⚙️<br>Settings</button>
+</div>
+</div>
+
+<script>
+let products = JSON.parse(localStorage.getItem('pos_products')||'[]');
+let sales = JSON.parse(localStorage.getItem('pos_sales')||'[]');
+let debts = JSON.parse(localStorage.getItem('pos_debts')||'[]');
+let cart = [];
+let shop = JSON.parse(localStorage.getItem('pos_shop')||'null');
+
+if(products.length===0){
+  products = [
+    {name:'Coca-Cola 50cl', price:800, stock:24},
+    {name:'Pepsi 50cl', price:800, stock:24},
+    {name:'Fanta 50cl', price:800, stock:20},
+    {name:'Sprite 50cl', price:800, stock:20},
+    {name:'Malt - Maltina', price:1200, stock:12},
+    {name:'Chivita Orange 1L', price:2500, stock:8},
+    {name:'Hollandia Yoghurt', price:3000, stock:10},
+    {name:'Pure Water (Bag)', price:500, stock:30},
+    {name:'Energy Drink - Monster', price:2000, stock:10},
+    {name:'Beer - Heineken', price:2500, stock:12},
+  ];
+  saveAll();
+}
+
+function saveAll(){
+  localStorage.setItem('pos_products', JSON.stringify(products));
+  localStorage.setItem('pos_sales', JSON.stringify(sales));
+  localStorage.setItem('pos_debts', JSON.stringify(debts));
+  if(shop) localStorage.setItem('pos_shop', JSON.stringify(shop));
+}
+
+function init(){
+  if(shop){
+    document.getElementById('setupScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    document.getElementById('shopNameDisplay').innerText = shop.name + ' 🥤';
+    document.getElementById('editShopName').value = shop.name;
+    document.getElementById('editShopPhone').value = shop.phone || '';
+    document.getElementById('receiptPreview').innerText = shop.name + '\n' + (shop.phone||'') + '\nThank you for your patronage!';
+  }
+  renderAll();
+}
+function saveShop(){
+  let name = document.getElementById('shopNameInput').value.trim();
+  if(!name){ alert('Please enter shop name'); return; }
+  shop = {name:name, phone: document.getElementById('shopPhoneInput').value.trim()};
+  saveAll(); init();
+}
+function updateShop(){
+  shop.name = document.getElementById('editShopName').value.trim() || shop.name;
+  shop.phone = document.getElementById('editShopPhone').value.trim();
+  saveAll(); init(); alert('Saved!');
+}
+function showTab(t){
+  ['sell','products','sales','debt','settings'].forEach(x=>{
+    document.getElementById('tab-'+x).classList.toggle('hidden', x!==t);
+    document.getElementById('t-'+x).classList.toggle('active', x===t);
+  });
+}
+function renderProducts(){
+  let q = document.getElementById('search').value.toLowerCase();
+  let html = '';
+  products.forEach((p,i)=>{
+    if(q && !p.name.toLowerCase().includes(q)) return;
+    let low = p.stock <= 3 ? '<span class="badge">LOW STOCK</span>' : '';
+    html += `<div class="product"><div><b>${p.name}</b><br><small>₦${p.price} • Stock: ${p.stock} ${low}</small></div><button class="btn-green" style="width:auto" onclick="addToCart(${i})">+ Add</button></div>`;
+  });
+  document.getElementById('productList').innerHTML = html || '<p>No drink found</p>';
+
+  let m = '';
+  products.forEach((p,i)=>{
+    m += `<div class="product"><div><b>${p.name}</b><br><small>₦${p.price} • Stock: ${p.stock}</small></div><div><button class="btn-dark" onclick="editStock(${i},1)">+ Stock</button> <button class="btn-red" onclick="deleteProduct(${i})">Delete</button></div></div>`;
+  });
+  document.getElementById('manageList').innerHTML = m;
+}
+function addProduct(){
+  let n = document.getElementById('newName').value.trim();
+  let pr = parseInt(document.getElementById('newPrice').value);
+  let st = parseInt(document.getElementById('newStock').value) || 0;
+  if(!n || !pr){ alert('Enter name and price'); return; }
+  products.push({name:n, price:pr, stock:st});
+  saveAll(); renderAll();
+  document.getElementById('newName').value=''; document.getElementById('newPrice').value=''; document.getElementById('newStock').value='';
+  alert('Drink added!');
+}
+function deleteProduct(i){ if(confirm('Delete '+products[i].name+'?')){ products.splice(i,1); saveAll(); renderAll(); } }
+function editStock(i,amt){ products[i].stock += amt; saveAll(); renderAll(); }
+
+function addToCart(i){
+  if(products[i].stock<=0){ alert('Out of stock!'); return; }
+  let found = cart.find(c=>c.index===i);
+  if(found) found.qty++;
+  else cart.push({index:i, qty:1});
+  renderCart();
+}
+function renderCart(){
+  let html=''; let total=0;
+  cart.forEach((c,ci)=>{
+    let p = products[c.index];
+    let sub = p.price * c.qty; total+=sub;
+    html += `<div class="cart-item"><span>${p.name} x ${c.qty}</span><span>₦${sub} <button onclick="removeFromCart(${ci})" style="background:#ff4444;color:#fff;padding:4px 8px">x</button></span></div>`;
+  });
+  document.getElementById('cartList').innerHTML = html || '<p style="color:#aaa">Cart is empty.</p>';
+  document.getElementById('cartTotal').innerText = 'Total: ₦' + total.toLocaleString();
+}
+function removeFromCart(ci){ cart.splice(ci,1); renderCart(); }
+function clearCart(){ cart=[]; renderCart(); }
+
+function checkout(){
+  if(cart.length===0){ alert('Cart is empty'); return; }
+  let total=0; let items=[];
+  cart.forEach(c=>{
+    let p=products[c.index];
+    total += p.price*c.qty;
+    items.push(p.name+' x '+c.qty+' = ₦'+(p.price*c.qty));
+    p.stock -= c.qty;
+  });
+  let method = document.getElementById('payMethod').value;
+  let cust = document.getElementById('customerName').value.trim() || 'Walk-in';
+  let sale = {date:new Date().toLocaleString(), items:items, total:total, method:method, customer:cust};
+  sales.unshift(sale);
+  if(method.includes('Credit')){
+    debts.unshift({name:cust, amount:total, note:items.join(', '), date:new Date().toLocaleDateString(), paid:false});
+  }
+  saveAll(); cart=[]; document.getElementById('customerName').value='';
+  renderAll();
+  let receipt = shop.name + '\n' + (shop.phone||'') + '\n---\n' + items.join('\n') + '\n---\nTotal: ₦' + total + '\nPayment: ' + method + '\nCustomer: ' + cust + '\nThank you!';
+  if(confirm('Sale done! ₦'+total+'\n\nShare receipt on WhatsApp?')){
+    window.open('https://wa.me/?text='+encodeURIComponent(receipt));
+  }
+}
+
+function renderSales(){
+  let today = new Date().toLocaleDateString();
+  let todaySales = sales.filter(s=> s.date.includes(today));
+  let todayTotal = todaySales.reduce((a,s)=>a+s.total,0);
+  document.getElementById('todayTotal').innerText = 'Today: ₦' + todayTotal.toLocaleString() + ' • ' + todaySales.length + ' sales';
+  document.getElementById('salesSummary').innerHTML = `Today: <b>₦${todayTotal.toLocaleString()}</b><br>Total all time: <b>₦${sales.reduce((a,s)=>a+s.total,0).toLocaleString()}</b> • ${sales.length} sales`;
+  let html='';
+  sales.slice(0,20).forEach(s=>{
+    html += `<div style="border-bottom:1px solid #333;padding:10px 0"><b>₦${s.total.toLocaleString()}</b> - ${s.method} - ${s.customer}<br><small>${s.date}<br>${s.items.join(' | ')}</small></div>`;
+  });
+  document.getElementById('salesList').innerHTML = html || 'No sales yet';
+}
+function clearSales(){ if(confirm('Clear all sales history?')){ sales=[]; saveAll(); renderAll(); } }
+function shareReport(){
+  let today = new Date().toLocaleDateString();
+  let todaySales = sales.filter(s=> s.date.includes(today));
+  let total = todaySales.reduce((a,s)=>a+s.total,0);
+  let text = `📊 ${shop.name} - Sales Report ${today}\nTotal: ₦${total}\nSales: ${todaySales.length}\n---\n` + todaySales.map(s=>`₦${s.total} - ${s.method} - ${s.customer}`).join('\n');
+  window.open('https://wa.me/?text='+encodeURIComponent(text));
+}
+
+function addDebt(){
+  let n=document.getElementById('debtName').value.trim();
+  let a=parseInt(document.getElementById('debtAmount').value);
+  if(!n||!a){ alert('Enter name and amount'); return; }
+  debts.unshift({name:n, amount:a, note:document.getElementById('debtNote').value, date:new Date().toLocaleDateString(), paid:false});
+  saveAll(); renderAll();
+  document.getElementById('debtName').value=''; document.getElementById('debtAmount').value=''; document.getElementById('debtNote').value='';
+}
+function renderDebts(){
+  let totalUnpaid = debts.filter(d=>!d.paid).reduce((a,d)=>a+d.amount,0);
+  document.getElementById('totalDebt').innerText = 'Total owing you: ₦' + totalUnpaid.toLocaleString();
+  let html='';
+  debts.forEach((d,i)=>{
+    html += `<div class="product"><div><b>${d.name}</b> ${d.paid?'<span style="color:#25D366">PAID ✅</span>':''}<br><small>₦${d.amount} • ${d.note||''} • ${d.date}</small></div><div>${!d.paid?`<button class="btn-green" style="width:auto" onclick="markPaid(${i})">Mark Paid</button>`:''} <button class="btn-red" style="width:auto" onclick="deleteDebt(${i})">x</button></div></div>`;
+  });
+  document.getElementById('debtList').innerHTML = html || 'No debts';
+}
+function markPaid(i){ debts[i].paid=true; saveAll(); renderAll(); }
+function deleteDebt(i){ debts.splice(i,1); saveAll(); renderAll(); }
+
+function renderAll(){ renderProducts(); renderCart(); renderSales(); renderDebts(); }
+init();
+</script>
+</body>
+</html>
