@@ -27,9 +27,8 @@ button{padding:12px;border:none;border-radius:10px;font-weight:bold;cursor:point
 .total{font-size:22px;font-weight:bold;text-align:right}
 .setup{max-width:420px;margin:40px auto;padding:20px;text-align:center}
 .hidden{display:none}
-.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:99;padding:15px}
-.modal-box{background:#fff;color:#000;width:100%;max-width:380px;border-radius:14px;padding:16px;text-align:center}
-.modal-box img{width:100%;border-radius:10px;border:1px solid #ddd}
+.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:99;padding:15px;overflow-y:auto}
+.modal-box{background:#fff;color:#000;width:100%;max-width:380px;border-radius:14px;padding:16px;text-align:center;margin:auto}
 .row{display:flex;gap:8px}
 .row input{flex:1}
 label{font-size:13px;color:#aaa;text-align:left;display:block}
@@ -93,7 +92,7 @@ label{font-size:13px;color:#aaa;text-align:left;display:block}
 
 <div id="tab-sales" class="hidden">
 <div class="card"><h3>📊 Today's Sales</h3><p id="salesSummary"></p><button class="btn-white" onclick="shareReport()">Share Report on WhatsApp</button></div>
-<div class="card"><h3>🧾 History - Tap receipt to view image</h3><div id="salesList"></div><button class="btn-red" style="width:100%;margin-top:10px" onclick="clearSales()">Clear History</button></div>
+<div class="card"><h3>🧾 History - Tap to view receipt</h3><div id="salesList"></div><button class="btn-red" style="width:100%;margin-top:10px" onclick="clearSales()">Clear History</button></div>
 </div>
 
 <div id="tab-debt" class="hidden">
@@ -119,7 +118,8 @@ label{font-size:13px;color:#aaa;text-align:left;display:block}
 <div class="modal-box">
 <h3 style="margin:0">🧾 Receipt</h3>
 <p style="font-size:12px;color:#666" id="receiptTime"></p>
-<canvas id="receiptCanvas" width="340" height="520" style="width:100%;background:#fff"></canvas>
+<div id="receiptHtml" style="background:#fff;color:#000;text-align:left;padding:14px;border-radius:10px;font-family:monospace;font-size:13px;line-height:1.6;border:1px solid #ddd;white-space:pre-line"></div>
+<canvas id="receiptCanvas" width="340" height="520" style="display:none"></canvas>
 <div class="row" style="margin-top:10px">
 <button class="btn-green" onclick="downloadReceipt()">⬇ Download Receipt</button>
 <button class="btn-white" onclick="shareReceiptImage()">Share WhatsApp</button>
@@ -140,165 +140,4 @@ let editingIndex = -1;
 if(products.length===0){
   products = [
     {name:'Coca-Cola 50cl', price:800, packSize:24, packs:1, pieces:0},
-    {name:'Pepsi 50cl', price:800, packSize:24, packs:1, pieces:0},
-    {name:'Fanta 50cl', price:800, packSize:24, packs:0, pieces:20},
-    {name:'Maltina', price:1200, packSize:12, packs:1, pieces:0},
-    {name:'Chivita 1L', price:2500, packSize:12, packs:0, pieces:8},
-    {name:'Pure Water (Bag)', price:500, packSize:20, packs:1, pieces:10},
-  ];
-  saveAll();
-}
-function totalPieces(p){ return (p.packs||0)*(p.packSize||1) + (p.pieces||0); }
-function formatStock(p){ return `${p.packs||0} pack(s) + ${p.pieces||0} pcs = ${totalPieces(p)} pcs total`; }
-function saveAll(){ localStorage.setItem('pos_products',JSON.stringify(products)); localStorage.setItem('pos_sales',JSON.stringify(sales)); localStorage.setItem('pos_debts',JSON.stringify(debts)); if(shop) localStorage.setItem('pos_shop',JSON.stringify(shop)); }
-function init(){ if(shop){ document.getElementById('setupScreen').classList.add('hidden'); document.getElementById('mainApp').classList.remove('hidden'); document.getElementById('shopNameDisplay').innerText = shop.name+' 🥤'; document.getElementById('editShopName').value=shop.name; document.getElementById('editShopPhone').value=shop.phone||''; } renderAll(); }
-function saveShop(){ let n=document.getElementById('shopNameInput').value.trim(); if(!n){alert('Enter shop name');return;} shop={name:n, phone:document.getElementById('shopPhoneInput').value.trim()}; saveAll(); init(); }
-function updateShop(){ shop.name=document.getElementById('editShopName').value.trim()||shop.name; shop.phone=document.getElementById('editShopPhone').value.trim(); saveAll(); init(); alert('Saved!'); }
-function showTab(t){ ['sell','products','sales','debt','settings'].forEach(x=>{ document.getElementById('tab-'+x).classList.toggle('hidden',x!==t); document.getElementById('t-'+x).classList.toggle('active',x===t); }); }
-
-function renderProducts(){
-  let q=document.getElementById('search').value.toLowerCase();
-  let html='';
-  products.forEach((p,i)=>{
-    if(q && !p.name.toLowerCase().includes(q)) return;
-    let low = totalPieces(p)<=3 ? '<span class="badge">LOW</span>' : '';
-    html+=`<div class="product"><div><b>${p.name}</b><br><small>₦${p.price} / pc • ${formatStock(p)} ${low}</small></div><button class="btn-green" style="width:auto" onclick="addToCart(${i})">+ Add</button></div>`;
-  });
-  document.getElementById('productList').innerHTML=html||'<p>No drink found</p>';
-
-  let m='';
-  products.forEach((p,i)=>{
-    m+=`<div class="product"><div style="flex:1"><b>${p.name}</b><br><small>₦${p.price} / pc • Pack: ${p.packSize} pcs<br>${formatStock(p)}</small>`;
-    if(editingIndex===i){
-      m+=`<div class="editBox"><input id="editPrice${i}" type="number" value="${p.price}" placeholder="New Price"><input id="editPackSize${i}" type="number" value="${p.packSize}" placeholder="Pieces per pack"><div class="row"><input id="editPacks${i}" type="number" value="${p.packs}" placeholder="Packs"><input id="editPieces${i}" type="number" value="${p.pieces}" placeholder="Pieces"></div><button class="btn-green" onclick="saveEdit(${i})">Save Changes</button> <button class="btn-dark" onclick="cancelEdit()">Cancel</button></div>`;
-    }
-    m+=`</div><div><button class="btn-dark" onclick="startEdit(${i})">✏️ Edit</button> <button class="btn-red" onclick="deleteProduct(${i})">Delete</button></div></div>`;
-  });
-  document.getElementById('manageList').innerHTML=m;
-}
-function startEdit(i){ editingIndex=i; renderProducts(); }
-function cancelEdit(){ editingIndex=-1; renderProducts(); }
-function saveEdit(i){
-  let p=products[i];
-  p.price=parseInt(document.getElementById('editPrice'+i).value)||p.price;
-  p.packSize=parseInt(document.getElementById('editPackSize'+i).value)||p.packSize;
-  p.packs=parseInt(document.getElementById('editPacks'+i).value)||0;
-  p.pieces=parseInt(document.getElementById('editPieces'+i).value)||0;
-  // Normalize pieces > packSize into packs
-  if(p.pieces >= p.packSize){ p.packs += Math.floor(p.pieces/p.packSize); p.pieces = p.pieces % p.packSize; }
-  editingIndex=-1; saveAll(); renderAll(); alert('Updated!');
-}
-function addProduct(){
-  let n=document.getElementById('newName').value.trim();
-  let pr=parseInt(document.getElementById('newPrice').value);
-  let packSize=parseInt(document.getElementById('newPackSize').value)||1;
-  let packs=parseInt(document.getElementById('newPacks').value)||0;
-  let pieces=parseInt(document.getElementById('newPieces').value)||0;
-  if(!n||!pr){alert('Enter name and price');return;}
-  if(pieces>=packSize){ packs+=Math.floor(pieces/packSize); pieces=pieces%packSize; }
-  products.push({name:n, price:pr, packSize:packSize, packs:packs, pieces:pieces});
-  saveAll(); renderAll();
-  ['newName','newPrice','newPackSize','newPacks','newPieces'].forEach(id=>document.getElementById(id).value='');
-  alert('Drink added!');
-}
-function deleteProduct(i){ if(confirm('Delete '+products[i].name+'?')){ products.splice(i,1); saveAll(); renderAll(); } }
-function addToCart(i){ if(totalPieces(products[i])<=0){alert('Out of stock!');return;} let f=cart.find(c=>c.index===i); if(f) f.qty++; else cart.push({index:i,qty:1}); renderCart(); }
-function renderCart(){ let html=''; let total=0; cart.forEach((c,ci)=>{ let p=products[c.index]; let sub=p.price*c.qty; total+=sub; html+=`<div class="cart-item"><span>${p.name} x ${c.qty}</span><span>₦${sub} <button onclick="removeFromCart(${ci})" style="background:#ff4444;color:#fff;padding:4px 8px">x</button></span></div>`; }); document.getElementById('cartList').innerHTML=html||'<p style="color:#aaa">Cart is empty.</p>'; document.getElementById('cartTotal').innerText='Total: ₦'+total.toLocaleString(); }
-function removeFromCart(ci){ cart.splice(ci,1); renderCart(); }
-function clearCart(){ cart=[]; renderCart(); }
-
-function checkout(){
-  if(cart.length===0){alert('Cart empty');return;}
-  let total=0; let items=[];
-  cart.forEach(c=>{
-    let p=products[c.index]; total+=p.price*c.qty; items.push({name:p.name, qty:c.qty, price:p.price, sub:p.price*c.qty});
-    // Deduct from pieces, borrowing from packs
-    let remaining = totalPieces(p) - c.qty;
-    p.packs = Math.floor(remaining / p.packSize);
-    p.pieces = remaining % p.packSize;
-  });
-  let method=document.getElementById('payMethod').value;
-  let cust=document.getElementById('customerName').value.trim()||'Walk-in';
-  let now=new Date();
-  let sale={date:now.toLocaleString(), timestamp:now.toISOString(), items:items, total:total, method:method, customer:cust};
-  sales.unshift(sale);
-  if(method.includes('Credit')){ debts.unshift({name:cust, amount:total, note:items.map(i=>i.name+' x '+i.qty).join(', '), date:now.toLocaleDateString(), paid:false}); }
-  saveAll(); cart=[]; document.getElementById('customerName').value=''; renderAll();
-  showReceipt(sale);
-}
-
-function showReceipt(sale){
-  lastReceipt=sale;
-  document.getElementById('receiptTime').innerText = sale.date;
-  drawReceiptCanvas(sale);
-  document.getElementById('receiptModal').classList.remove('hidden');
-}
-function drawReceiptCanvas(sale){
-  let canvas=document.getElementById('receiptCanvas');
-  let ctx=canvas.getContext('2d');
-  // Dynamic height based on items
-  canvas.height = 380 + sale.items.length*30;
-  ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle='#000'; ctx.textAlign='center';
-  ctx.font='bold 20px Arial'; ctx.fillText(shop.name, 170, 30);
-  ctx.font='12px Arial'; ctx.fillText(shop.phone||'', 170, 50);
-  ctx.fillText('--------------------------------', 170, 68);
-  ctx.textAlign='left'; ctx.font='12px Arial';
-  ctx.fillText('Date: '+sale.date, 15, 88);
-  ctx.fillText('Customer: '+sale.customer, 15, 106);
-  ctx.fillText('Payment: '+sale.method, 15, 124);
-  ctx.fillText('--------------------------------', 170, 142);
-  ctx.font='bold 12px Arial'; ctx.fillText('ITEM', 15, 160); ctx.fillText('QTY', 180, 160); ctx.fillText('AMOUNT', 240, 160);
-  ctx.font='12px Arial';
-  sale.items.forEach((it, idx)=>{
-    let y=182+idx*26;
-    ctx.fillText(it.name.substring(0,18), 15, y);
-    ctx.fillText('x'+it.qty, 185, y);
-    ctx.fillText('₦'+it.sub.toLocaleString(), 240, y);
-  });
-  let y = 190 + sale.items.length*26;
-  ctx.fillText('--------------------------------', 170, y);
-  ctx.font='bold 16px Arial'; ctx.fillText('TOTAL: ₦'+sale.total.toLocaleString(), 15, y+28);
-  ctx.font='12px Arial'; ctx.textAlign='center';
-  ctx.fillText('Thank you for your patronage!', 170, y+55);
-  ctx.fillText('Please come again 🥤', 170, y+73);
-  ctx.fillText('Receipt No: '+sale.timestamp.slice(0,19).replace(/[-T:]/g,''), 170, y+90);
-}
-function downloadReceipt(){
-  if(!lastReceipt) return;
-  let canvas=document.getElementById('receiptCanvas');
-  let a=document.createElement('a');
-  a.href=canvas.toDataURL('image/png');
-  a.download='receipt-'+lastReceipt.timestamp.slice(0,10)+'-'+lastReceipt.total+'.png';
-  a.click();
-}
-function shareReceiptImage(){
-  downloadReceipt();
-  alert('Receipt downloaded! Now share it from your gallery to WhatsApp.');
-}
-function closeReceipt(){ document.getElementById('receiptModal').classList.add('hidden'); }
-
-function renderSales(){
-  let today=new Date().toLocaleDateString();
-  let todaySales=sales.filter(s=>s.date.includes(today));
-  let todayTotal=todaySales.reduce((a,s)=>a+s.total,0);
-  document.getElementById('todayTotal').innerText='Today: ₦'+todayTotal.toLocaleString()+' • '+todaySales.length+' sales';
-  document.getElementById('salesSummary').innerHTML=`Today: <b>₦${todayTotal.toLocaleString()}</b><br>Total all time: <b>₦${sales.reduce((a,s)=>a+s.total,0).toLocaleString()}</b> • ${sales.length} sales`;
-  let html='';
-  sales.slice(0,20).forEach((s,idx)=>{
-    html+=`<div style="border-bottom:1px solid #333;padding:10px 0;cursor:pointer" onclick="showReceiptByIndex(${idx})"><b>₦${s.total.toLocaleString()}</b> - ${s.method} - ${s.customer}<br><small>🕒 ${s.date}<br>${s.items.map(i=>i.name+' x '+i.qty).join(' | ')}<br><span style="color:#25D366">Tap to view receipt image →</span></small></div>`;
-  });
-  document.getElementById('salesList').innerHTML=html||'No sales yet';
-}
-function showReceiptByIndex(idx){ showReceipt(sales[idx]); }
-function clearSales(){ if(confirm('Clear all sales?')){ sales=[]; saveAll(); renderAll(); } }
-function shareReport(){ let today=new Date().toLocaleDateString(); let ts=sales.filter(s=>s.date.includes(today)); let total=ts.reduce((a,s)=>a+s.total,0); let text=`📊 ${shop.name} - Sales ${today}\nTotal: ₦${total}\nSales: ${ts.length}`; window.open('https://wa.me/?text='+encodeURIComponent(text)); }
-function addDebt(){ let n=document.getElementById('debtName').value.trim(); let a=parseInt(document.getElementById('debtAmount').value); if(!n||!a){alert('Enter name and amount');return;} debts.unshift({name:n,amount:a,note:document.getElementById('debtNote').value,date:new Date().toLocaleDateString(),paid:false}); saveAll(); renderAll(); document.getElementById('debtName').value='';document.getElementById('debtAmount').value='';document.getElementById('debtNote').value=''; }
-function renderDebts(){ let total=debts.filter(d=>!d.paid).reduce((a,d)=>a+d.amount,0); document.getElementById('totalDebt').innerText='Total owing you: ₦'+total.toLocaleString(); let html=''; debts.forEach((d,i)=>{ html+=`<div class="product"><div><b>${d.name}</b> ${d.paid?'<span style="color:#25D366">PAID ✅</span>':''}<br><small>₦${d.amount} • ${d.note||''} • ${d.date}</small></div><div>${!d.paid?`<button class="btn-green" style="width:auto" onclick="markPaid(${i})">Paid</button>`:''} <button class="btn-red" style="width:auto" onclick="deleteDebt(${i})">x</button></div></div>`; }); document.getElementById('debtList').innerHTML=html||'No debts'; }
-function markPaid(i){ debts[i].paid=true; saveAll(); renderAll(); }
-function deleteDebt(i){ debts.splice(i,1); saveAll(); renderAll(); }
-function renderAll(){ renderProducts(); renderCart(); renderSales(); renderDebts(); }
-init();
-</script>
-</body>
-</html>
+    {name:'Pepsi
