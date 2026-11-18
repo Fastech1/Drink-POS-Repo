@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 *{box-sizing:border-box}
-body{font-family:sans-serif;background:#0f0f0f;color:#fff;margin:0;padding:0;padding-bottom:90px}
+body{font-family:sans-serif;background:#0f0f0f;color:#fff;margin:0;padding-bottom:90px}
 .header{background:#111;padding:15px;text-align:center;position:sticky;top:0;z-index:10;border-bottom:1px solid #333}
 .header h1{margin:0;font-size:22px}
 .header p{margin:4px;color:#25D366;font-weight:bold}
@@ -26,20 +26,26 @@ button{padding:12px;border:none;border-radius:10px;font-weight:bold;cursor:point
 .badge{background:#ff4444;color:#fff;padding:2px 7px;border-radius:20px;font-size:12px}
 .total{font-size:22px;font-weight:bold;text-align:right}
 .setup{max-width:420px;margin:40px auto;padding:20px;text-align:center}
-.logo{font-size:60px}
 .hidden{display:none}
+.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:99;padding:15px}
+.modal-box{background:#fff;color:#000;width:100%;max-width:380px;border-radius:14px;padding:16px;text-align:center}
+.modal-box img{width:100%;border-radius:10px;border:1px solid #ddd}
+.row{display:flex;gap:8px}
+.row input{flex:1}
+label{font-size:13px;color:#aaa;text-align:left;display:block}
+.editBox{background:#333;padding:10px;border-radius:10px;margin-top:8px}
+.editBox input{background:#444}
 </style>
 </head>
 <body>
 
 <div id="setupScreen" class="setup">
-<div class="logo">🥤</div>
+<div style="font-size:60px">🥤</div>
 <h1>Drink Shop POS</h1>
 <p>Your shop, on your phone.</p>
-<input id="shopNameInput" placeholder="Enter your shop name e.g. Chuks Cold Drinks">
+<input id="shopNameInput" placeholder="Enter shop name e.g. Chuks Cold Drinks">
 <input id="shopPhoneInput" placeholder="Shop phone number (optional)">
 <button class="btn-green" onclick="saveShop()">Start Selling →</button>
-<p style="color:#888;font-size:13px">You can change this later in Settings.</p>
 </div>
 
 <div id="mainApp" class="hidden">
@@ -48,95 +54,77 @@ button{padding:12px;border:none;border-radius:10px;font-weight:bold;cursor:point
 <p id="todayTotal">Today: ₦0</p>
 </div>
 
-<!-- SELL TAB -->
 <div id="tab-sell">
 <div class="card">
 <h3>🧾 Sell Drinks</h3>
-<input id="search" placeholder="Search drink... e.g. Coke" oninput="renderProducts()">
+<input id="search" placeholder="Search drink..." oninput="renderProducts()">
 <div id="productList"></div>
 </div>
-
 <div class="card">
 <h3>🛒 Cart</h3>
-<div id="cartList"><p style="color:#aaa">Cart is empty. Tap a drink to add.</p></div>
+<div id="cartList"><p style="color:#aaa">Cart is empty.</p></div>
 <div class="total" id="cartTotal">Total: ₦0</div>
-<select id="payMethod">
-<option>Cash</option>
-<option>Transfer</option>
-<option>POS / Card</option>
-<option>Credit (Customer owes)</option>
-</select>
-<input id="customerName" placeholder="Customer name (for credit / receipt)">
+<select id="payMethod"><option>Cash</option><option>Transfer</option><option>POS / Card</option><option>Credit (Customer owes)</option></select>
+<input id="customerName" placeholder="Customer name">
 <button class="btn-green" onclick="checkout()">Checkout ✅</button>
 <button class="btn-white" style="width:100%;margin-top:8px" onclick="clearCart()">Clear Cart</button>
 </div>
 </div>
 
-<!-- PRODUCTS TAB -->
 <div id="tab-products" class="hidden">
 <div class="card">
-<h3>➕ Add New Drink</h3>
-<input id="newName" placeholder="Drink name e.g. Chivita">
-<input id="newPrice" type="number" placeholder="Price e.g. 1500">
-<input id="newStock" type="number" placeholder="Stock e.g. 24">
+<h3>➕ Add New Drink - Packs & Pieces</h3>
+<input id="newName" placeholder="Drink name e.g. Coca-Cola">
+<input id="newPrice" type="number" placeholder="Price per PIECE e.g. 800">
+<label>How many pieces in 1 Pack / Crate?</label>
+<input id="newPackSize" type="number" placeholder="e.g. 24 (for crate), 12, 20">
+<div class="row">
+<input id="newPacks" type="number" placeholder="Packs e.g. 2">
+<input id="newPieces" type="number" placeholder="Pieces e.g. 5">
+</div>
+<p style="font-size:12px;color:#888">Example: 2 packs + 5 pieces = if pack is 24, total = 53 pieces</p>
 <button class="btn-green" onclick="addProduct()">Add Drink</button>
 </div>
 <div class="card">
-<h3>📦 All Drinks</h3>
+<h3>📦 All Drinks - Tap Edit to change price / stock</h3>
 <div id="manageList"></div>
 </div>
 </div>
 
-<!-- SALES TAB -->
 <div id="tab-sales" class="hidden">
-<div class="card">
-<h3>📊 Today's Sales</h3>
-<p id="salesSummary"></p>
-<button class="btn-white" onclick="shareReport()">Share Report on WhatsApp</button>
-</div>
-<div class="card">
-<h3>🧾 History</h3>
-<div id="salesList"></div>
-<button class="btn-red" style="width:100%;margin-top:10px" onclick="clearSales()">Clear History</button>
-</div>
+<div class="card"><h3>📊 Today's Sales</h3><p id="salesSummary"></p><button class="btn-white" onclick="shareReport()">Share Report on WhatsApp</button></div>
+<div class="card"><h3>🧾 History - Tap receipt to view image</h3><div id="salesList"></div><button class="btn-red" style="width:100%;margin-top:10px" onclick="clearSales()">Clear History</button></div>
 </div>
 
-<!-- DEBT TAB -->
 <div id="tab-debt" class="hidden">
-<div class="card">
-<h3>� دفتر Debt Book - People owing you</h3>
-<input id="debtName" placeholder="Customer name">
-<input id="debtAmount" type="number" placeholder="Amount owed e.g. 3500">
-<input id="debtNote" placeholder="What they bought e.g. 2 crates Coke">
-<button class="btn-green" onclick="addDebt()">Add Debt</button>
-</div>
-<div class="card">
-<h3>People Owing</h3>
-<div id="debtList"></div>
-<p id="totalDebt" style="font-weight:bold"></p>
-</div>
+<div class="card"><h3>📒 Debt Book</h3><input id="debtName" placeholder="Customer name"><input id="debtAmount" type="number" placeholder="Amount owed"><input id="debtNote" placeholder="What they bought"><button class="btn-green" onclick="addDebt()">Add Debt</button></div>
+<div class="card"><h3>People Owing</h3><div id="debtList"></div><p id="totalDebt"></p></div>
 </div>
 
-<!-- SETTINGS TAB -->
 <div id="tab-settings" class="hidden">
-<div class="card">
-<h3>⚙️ Shop Settings</h3>
-<input id="editShopName" placeholder="Shop name">
-<input id="editShopPhone" placeholder="Shop phone">
-<button class="btn-green" onclick="updateShop()">Save Shop Info</button>
-</div>
-<div class="card">
-<h3>🧾 Receipt Preview</h3>
-<p id="receiptPreview" style="white-space:pre-line;background:#fff;color:#000;padding:12px;border-radius:10px"></p>
-</div>
+<div class="card"><h3>⚙️ Shop Settings</h3><input id="editShopName" placeholder="Shop name"><input id="editShopPhone" placeholder="Shop phone"><button class="btn-green" onclick="updateShop()">Save Shop Info</button></div>
 </div>
 
 <div class="tabs">
 <button id="t-sell" class="active" onclick="showTab('sell')">🧾<br>Sell</button>
 <button id="t-products" onclick="showTab('products')">🥤<br>Drinks</button>
 <button id="t-sales" onclick="showTab('sales')">📊<br>Sales</button>
-<button id="t-debt" onclick="showTab('debt')">� دفتر<br>Debt</button>
+<button id="t-debt" onclick="showTab('debt')">📒<br>Debt</button>
 <button id="t-settings" onclick="showTab('settings')">⚙️<br>Settings</button>
+</div>
+</div>
+
+<!-- RECEIPT MODAL -->
+<div id="receiptModal" class="modal hidden">
+<div class="modal-box">
+<h3 style="margin:0">🧾 Receipt</h3>
+<p style="font-size:12px;color:#666" id="receiptTime"></p>
+<canvas id="receiptCanvas" width="340" height="520" style="width:100%;background:#fff"></canvas>
+<div class="row" style="margin-top:10px">
+<button class="btn-green" onclick="downloadReceipt()">⬇ Download Receipt</button>
+<button class="btn-white" onclick="shareReceiptImage()">Share WhatsApp</button>
+</div>
+<button class="btn-dark" style="width:100%;margin-top:8px" onclick="closeReceipt()">Close</button>
 </div>
 </div>
 
@@ -146,172 +134,169 @@ let sales = JSON.parse(localStorage.getItem('pos_sales')||'[]');
 let debts = JSON.parse(localStorage.getItem('pos_debts')||'[]');
 let cart = [];
 let shop = JSON.parse(localStorage.getItem('pos_shop')||'null');
+let lastReceipt = null;
+let editingIndex = -1;
 
 if(products.length===0){
   products = [
-    {name:'Coca-Cola 50cl', price:800, stock:24},
-    {name:'Pepsi 50cl', price:800, stock:24},
-    {name:'Fanta 50cl', price:800, stock:20},
-    {name:'Sprite 50cl', price:800, stock:20},
-    {name:'Malt - Maltina', price:1200, stock:12},
-    {name:'Chivita Orange 1L', price:2500, stock:8},
-    {name:'Hollandia Yoghurt', price:3000, stock:10},
-    {name:'Pure Water (Bag)', price:500, stock:30},
-    {name:'Energy Drink - Monster', price:2000, stock:10},
-    {name:'Beer - Heineken', price:2500, stock:12},
+    {name:'Coca-Cola 50cl', price:800, packSize:24, packs:1, pieces:0},
+    {name:'Pepsi 50cl', price:800, packSize:24, packs:1, pieces:0},
+    {name:'Fanta 50cl', price:800, packSize:24, packs:0, pieces:20},
+    {name:'Maltina', price:1200, packSize:12, packs:1, pieces:0},
+    {name:'Chivita 1L', price:2500, packSize:12, packs:0, pieces:8},
+    {name:'Pure Water (Bag)', price:500, packSize:20, packs:1, pieces:10},
   ];
   saveAll();
 }
+function totalPieces(p){ return (p.packs||0)*(p.packSize||1) + (p.pieces||0); }
+function formatStock(p){ return `${p.packs||0} pack(s) + ${p.pieces||0} pcs = ${totalPieces(p)} pcs total`; }
+function saveAll(){ localStorage.setItem('pos_products',JSON.stringify(products)); localStorage.setItem('pos_sales',JSON.stringify(sales)); localStorage.setItem('pos_debts',JSON.stringify(debts)); if(shop) localStorage.setItem('pos_shop',JSON.stringify(shop)); }
+function init(){ if(shop){ document.getElementById('setupScreen').classList.add('hidden'); document.getElementById('mainApp').classList.remove('hidden'); document.getElementById('shopNameDisplay').innerText = shop.name+' 🥤'; document.getElementById('editShopName').value=shop.name; document.getElementById('editShopPhone').value=shop.phone||''; } renderAll(); }
+function saveShop(){ let n=document.getElementById('shopNameInput').value.trim(); if(!n){alert('Enter shop name');return;} shop={name:n, phone:document.getElementById('shopPhoneInput').value.trim()}; saveAll(); init(); }
+function updateShop(){ shop.name=document.getElementById('editShopName').value.trim()||shop.name; shop.phone=document.getElementById('editShopPhone').value.trim(); saveAll(); init(); alert('Saved!'); }
+function showTab(t){ ['sell','products','sales','debt','settings'].forEach(x=>{ document.getElementById('tab-'+x).classList.toggle('hidden',x!==t); document.getElementById('t-'+x).classList.toggle('active',x===t); }); }
 
-function saveAll(){
-  localStorage.setItem('pos_products', JSON.stringify(products));
-  localStorage.setItem('pos_sales', JSON.stringify(sales));
-  localStorage.setItem('pos_debts', JSON.stringify(debts));
-  if(shop) localStorage.setItem('pos_shop', JSON.stringify(shop));
-}
-
-function init(){
-  if(shop){
-    document.getElementById('setupScreen').classList.add('hidden');
-    document.getElementById('mainApp').classList.remove('hidden');
-    document.getElementById('shopNameDisplay').innerText = shop.name + ' 🥤';
-    document.getElementById('editShopName').value = shop.name;
-    document.getElementById('editShopPhone').value = shop.phone || '';
-    document.getElementById('receiptPreview').innerText = shop.name + '\n' + (shop.phone||'') + '\nThank you for your patronage!';
-  }
-  renderAll();
-}
-function saveShop(){
-  let name = document.getElementById('shopNameInput').value.trim();
-  if(!name){ alert('Please enter shop name'); return; }
-  shop = {name:name, phone: document.getElementById('shopPhoneInput').value.trim()};
-  saveAll(); init();
-}
-function updateShop(){
-  shop.name = document.getElementById('editShopName').value.trim() || shop.name;
-  shop.phone = document.getElementById('editShopPhone').value.trim();
-  saveAll(); init(); alert('Saved!');
-}
-function showTab(t){
-  ['sell','products','sales','debt','settings'].forEach(x=>{
-    document.getElementById('tab-'+x).classList.toggle('hidden', x!==t);
-    document.getElementById('t-'+x).classList.toggle('active', x===t);
-  });
-}
 function renderProducts(){
-  let q = document.getElementById('search').value.toLowerCase();
-  let html = '';
+  let q=document.getElementById('search').value.toLowerCase();
+  let html='';
   products.forEach((p,i)=>{
     if(q && !p.name.toLowerCase().includes(q)) return;
-    let low = p.stock <= 3 ? '<span class="badge">LOW STOCK</span>' : '';
-    html += `<div class="product"><div><b>${p.name}</b><br><small>₦${p.price} • Stock: ${p.stock} ${low}</small></div><button class="btn-green" style="width:auto" onclick="addToCart(${i})">+ Add</button></div>`;
+    let low = totalPieces(p)<=3 ? '<span class="badge">LOW</span>' : '';
+    html+=`<div class="product"><div><b>${p.name}</b><br><small>₦${p.price} / pc • ${formatStock(p)} ${low}</small></div><button class="btn-green" style="width:auto" onclick="addToCart(${i})">+ Add</button></div>`;
   });
-  document.getElementById('productList').innerHTML = html || '<p>No drink found</p>';
+  document.getElementById('productList').innerHTML=html||'<p>No drink found</p>';
 
-  let m = '';
+  let m='';
   products.forEach((p,i)=>{
-    m += `<div class="product"><div><b>${p.name}</b><br><small>₦${p.price} • Stock: ${p.stock}</small></div><div><button class="btn-dark" onclick="editStock(${i},1)">+ Stock</button> <button class="btn-red" onclick="deleteProduct(${i})">Delete</button></div></div>`;
+    m+=`<div class="product"><div style="flex:1"><b>${p.name}</b><br><small>₦${p.price} / pc • Pack: ${p.packSize} pcs<br>${formatStock(p)}</small>`;
+    if(editingIndex===i){
+      m+=`<div class="editBox"><input id="editPrice${i}" type="number" value="${p.price}" placeholder="New Price"><input id="editPackSize${i}" type="number" value="${p.packSize}" placeholder="Pieces per pack"><div class="row"><input id="editPacks${i}" type="number" value="${p.packs}" placeholder="Packs"><input id="editPieces${i}" type="number" value="${p.pieces}" placeholder="Pieces"></div><button class="btn-green" onclick="saveEdit(${i})">Save Changes</button> <button class="btn-dark" onclick="cancelEdit()">Cancel</button></div>`;
+    }
+    m+=`</div><div><button class="btn-dark" onclick="startEdit(${i})">✏️ Edit</button> <button class="btn-red" onclick="deleteProduct(${i})">Delete</button></div></div>`;
   });
-  document.getElementById('manageList').innerHTML = m;
+  document.getElementById('manageList').innerHTML=m;
+}
+function startEdit(i){ editingIndex=i; renderProducts(); }
+function cancelEdit(){ editingIndex=-1; renderProducts(); }
+function saveEdit(i){
+  let p=products[i];
+  p.price=parseInt(document.getElementById('editPrice'+i).value)||p.price;
+  p.packSize=parseInt(document.getElementById('editPackSize'+i).value)||p.packSize;
+  p.packs=parseInt(document.getElementById('editPacks'+i).value)||0;
+  p.pieces=parseInt(document.getElementById('editPieces'+i).value)||0;
+  // Normalize pieces > packSize into packs
+  if(p.pieces >= p.packSize){ p.packs += Math.floor(p.pieces/p.packSize); p.pieces = p.pieces % p.packSize; }
+  editingIndex=-1; saveAll(); renderAll(); alert('Updated!');
 }
 function addProduct(){
-  let n = document.getElementById('newName').value.trim();
-  let pr = parseInt(document.getElementById('newPrice').value);
-  let st = parseInt(document.getElementById('newStock').value) || 0;
-  if(!n || !pr){ alert('Enter name and price'); return; }
-  products.push({name:n, price:pr, stock:st});
+  let n=document.getElementById('newName').value.trim();
+  let pr=parseInt(document.getElementById('newPrice').value);
+  let packSize=parseInt(document.getElementById('newPackSize').value)||1;
+  let packs=parseInt(document.getElementById('newPacks').value)||0;
+  let pieces=parseInt(document.getElementById('newPieces').value)||0;
+  if(!n||!pr){alert('Enter name and price');return;}
+  if(pieces>=packSize){ packs+=Math.floor(pieces/packSize); pieces=pieces%packSize; }
+  products.push({name:n, price:pr, packSize:packSize, packs:packs, pieces:pieces});
   saveAll(); renderAll();
-  document.getElementById('newName').value=''; document.getElementById('newPrice').value=''; document.getElementById('newStock').value='';
+  ['newName','newPrice','newPackSize','newPacks','newPieces'].forEach(id=>document.getElementById(id).value='');
   alert('Drink added!');
 }
 function deleteProduct(i){ if(confirm('Delete '+products[i].name+'?')){ products.splice(i,1); saveAll(); renderAll(); } }
-function editStock(i,amt){ products[i].stock += amt; saveAll(); renderAll(); }
-
-function addToCart(i){
-  if(products[i].stock<=0){ alert('Out of stock!'); return; }
-  let found = cart.find(c=>c.index===i);
-  if(found) found.qty++;
-  else cart.push({index:i, qty:1});
-  renderCart();
-}
-function renderCart(){
-  let html=''; let total=0;
-  cart.forEach((c,ci)=>{
-    let p = products[c.index];
-    let sub = p.price * c.qty; total+=sub;
-    html += `<div class="cart-item"><span>${p.name} x ${c.qty}</span><span>₦${sub} <button onclick="removeFromCart(${ci})" style="background:#ff4444;color:#fff;padding:4px 8px">x</button></span></div>`;
-  });
-  document.getElementById('cartList').innerHTML = html || '<p style="color:#aaa">Cart is empty.</p>';
-  document.getElementById('cartTotal').innerText = 'Total: ₦' + total.toLocaleString();
-}
+function addToCart(i){ if(totalPieces(products[i])<=0){alert('Out of stock!');return;} let f=cart.find(c=>c.index===i); if(f) f.qty++; else cart.push({index:i,qty:1}); renderCart(); }
+function renderCart(){ let html=''; let total=0; cart.forEach((c,ci)=>{ let p=products[c.index]; let sub=p.price*c.qty; total+=sub; html+=`<div class="cart-item"><span>${p.name} x ${c.qty}</span><span>₦${sub} <button onclick="removeFromCart(${ci})" style="background:#ff4444;color:#fff;padding:4px 8px">x</button></span></div>`; }); document.getElementById('cartList').innerHTML=html||'<p style="color:#aaa">Cart is empty.</p>'; document.getElementById('cartTotal').innerText='Total: ₦'+total.toLocaleString(); }
 function removeFromCart(ci){ cart.splice(ci,1); renderCart(); }
 function clearCart(){ cart=[]; renderCart(); }
 
 function checkout(){
-  if(cart.length===0){ alert('Cart is empty'); return; }
+  if(cart.length===0){alert('Cart empty');return;}
   let total=0; let items=[];
   cart.forEach(c=>{
-    let p=products[c.index];
-    total += p.price*c.qty;
-    items.push(p.name+' x '+c.qty+' = ₦'+(p.price*c.qty));
-    p.stock -= c.qty;
+    let p=products[c.index]; total+=p.price*c.qty; items.push({name:p.name, qty:c.qty, price:p.price, sub:p.price*c.qty});
+    // Deduct from pieces, borrowing from packs
+    let remaining = totalPieces(p) - c.qty;
+    p.packs = Math.floor(remaining / p.packSize);
+    p.pieces = remaining % p.packSize;
   });
-  let method = document.getElementById('payMethod').value;
-  let cust = document.getElementById('customerName').value.trim() || 'Walk-in';
-  let sale = {date:new Date().toLocaleString(), items:items, total:total, method:method, customer:cust};
+  let method=document.getElementById('payMethod').value;
+  let cust=document.getElementById('customerName').value.trim()||'Walk-in';
+  let now=new Date();
+  let sale={date:now.toLocaleString(), timestamp:now.toISOString(), items:items, total:total, method:method, customer:cust};
   sales.unshift(sale);
-  if(method.includes('Credit')){
-    debts.unshift({name:cust, amount:total, note:items.join(', '), date:new Date().toLocaleDateString(), paid:false});
-  }
-  saveAll(); cart=[]; document.getElementById('customerName').value='';
-  renderAll();
-  let receipt = shop.name + '\n' + (shop.phone||'') + '\n---\n' + items.join('\n') + '\n---\nTotal: ₦' + total + '\nPayment: ' + method + '\nCustomer: ' + cust + '\nThank you!';
-  if(confirm('Sale done! ₦'+total+'\n\nShare receipt on WhatsApp?')){
-    window.open('https://wa.me/?text='+encodeURIComponent(receipt));
-  }
+  if(method.includes('Credit')){ debts.unshift({name:cust, amount:total, note:items.map(i=>i.name+' x '+i.qty).join(', '), date:now.toLocaleDateString(), paid:false}); }
+  saveAll(); cart=[]; document.getElementById('customerName').value=''; renderAll();
+  showReceipt(sale);
 }
+
+function showReceipt(sale){
+  lastReceipt=sale;
+  document.getElementById('receiptTime').innerText = sale.date;
+  drawReceiptCanvas(sale);
+  document.getElementById('receiptModal').classList.remove('hidden');
+}
+function drawReceiptCanvas(sale){
+  let canvas=document.getElementById('receiptCanvas');
+  let ctx=canvas.getContext('2d');
+  // Dynamic height based on items
+  canvas.height = 380 + sale.items.length*30;
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#000'; ctx.textAlign='center';
+  ctx.font='bold 20px Arial'; ctx.fillText(shop.name, 170, 30);
+  ctx.font='12px Arial'; ctx.fillText(shop.phone||'', 170, 50);
+  ctx.fillText('--------------------------------', 170, 68);
+  ctx.textAlign='left'; ctx.font='12px Arial';
+  ctx.fillText('Date: '+sale.date, 15, 88);
+  ctx.fillText('Customer: '+sale.customer, 15, 106);
+  ctx.fillText('Payment: '+sale.method, 15, 124);
+  ctx.fillText('--------------------------------', 170, 142);
+  ctx.font='bold 12px Arial'; ctx.fillText('ITEM', 15, 160); ctx.fillText('QTY', 180, 160); ctx.fillText('AMOUNT', 240, 160);
+  ctx.font='12px Arial';
+  sale.items.forEach((it, idx)=>{
+    let y=182+idx*26;
+    ctx.fillText(it.name.substring(0,18), 15, y);
+    ctx.fillText('x'+it.qty, 185, y);
+    ctx.fillText('₦'+it.sub.toLocaleString(), 240, y);
+  });
+  let y = 190 + sale.items.length*26;
+  ctx.fillText('--------------------------------', 170, y);
+  ctx.font='bold 16px Arial'; ctx.fillText('TOTAL: ₦'+sale.total.toLocaleString(), 15, y+28);
+  ctx.font='12px Arial'; ctx.textAlign='center';
+  ctx.fillText('Thank you for your patronage!', 170, y+55);
+  ctx.fillText('Please come again 🥤', 170, y+73);
+  ctx.fillText('Receipt No: '+sale.timestamp.slice(0,19).replace(/[-T:]/g,''), 170, y+90);
+}
+function downloadReceipt(){
+  if(!lastReceipt) return;
+  let canvas=document.getElementById('receiptCanvas');
+  let a=document.createElement('a');
+  a.href=canvas.toDataURL('image/png');
+  a.download='receipt-'+lastReceipt.timestamp.slice(0,10)+'-'+lastReceipt.total+'.png';
+  a.click();
+}
+function shareReceiptImage(){
+  downloadReceipt();
+  alert('Receipt downloaded! Now share it from your gallery to WhatsApp.');
+}
+function closeReceipt(){ document.getElementById('receiptModal').classList.add('hidden'); }
 
 function renderSales(){
-  let today = new Date().toLocaleDateString();
-  let todaySales = sales.filter(s=> s.date.includes(today));
-  let todayTotal = todaySales.reduce((a,s)=>a+s.total,0);
-  document.getElementById('todayTotal').innerText = 'Today: ₦' + todayTotal.toLocaleString() + ' • ' + todaySales.length + ' sales';
-  document.getElementById('salesSummary').innerHTML = `Today: <b>₦${todayTotal.toLocaleString()}</b><br>Total all time: <b>₦${sales.reduce((a,s)=>a+s.total,0).toLocaleString()}</b> • ${sales.length} sales`;
+  let today=new Date().toLocaleDateString();
+  let todaySales=sales.filter(s=>s.date.includes(today));
+  let todayTotal=todaySales.reduce((a,s)=>a+s.total,0);
+  document.getElementById('todayTotal').innerText='Today: ₦'+todayTotal.toLocaleString()+' • '+todaySales.length+' sales';
+  document.getElementById('salesSummary').innerHTML=`Today: <b>₦${todayTotal.toLocaleString()}</b><br>Total all time: <b>₦${sales.reduce((a,s)=>a+s.total,0).toLocaleString()}</b> • ${sales.length} sales`;
   let html='';
-  sales.slice(0,20).forEach(s=>{
-    html += `<div style="border-bottom:1px solid #333;padding:10px 0"><b>₦${s.total.toLocaleString()}</b> - ${s.method} - ${s.customer}<br><small>${s.date}<br>${s.items.join(' | ')}</small></div>`;
+  sales.slice(0,20).forEach((s,idx)=>{
+    html+=`<div style="border-bottom:1px solid #333;padding:10px 0;cursor:pointer" onclick="showReceiptByIndex(${idx})"><b>₦${s.total.toLocaleString()}</b> - ${s.method} - ${s.customer}<br><small>🕒 ${s.date}<br>${s.items.map(i=>i.name+' x '+i.qty).join(' | ')}<br><span style="color:#25D366">Tap to view receipt image →</span></small></div>`;
   });
-  document.getElementById('salesList').innerHTML = html || 'No sales yet';
+  document.getElementById('salesList').innerHTML=html||'No sales yet';
 }
-function clearSales(){ if(confirm('Clear all sales history?')){ sales=[]; saveAll(); renderAll(); } }
-function shareReport(){
-  let today = new Date().toLocaleDateString();
-  let todaySales = sales.filter(s=> s.date.includes(today));
-  let total = todaySales.reduce((a,s)=>a+s.total,0);
-  let text = `📊 ${shop.name} - Sales Report ${today}\nTotal: ₦${total}\nSales: ${todaySales.length}\n---\n` + todaySales.map(s=>`₦${s.total} - ${s.method} - ${s.customer}`).join('\n');
-  window.open('https://wa.me/?text='+encodeURIComponent(text));
-}
-
-function addDebt(){
-  let n=document.getElementById('debtName').value.trim();
-  let a=parseInt(document.getElementById('debtAmount').value);
-  if(!n||!a){ alert('Enter name and amount'); return; }
-  debts.unshift({name:n, amount:a, note:document.getElementById('debtNote').value, date:new Date().toLocaleDateString(), paid:false});
-  saveAll(); renderAll();
-  document.getElementById('debtName').value=''; document.getElementById('debtAmount').value=''; document.getElementById('debtNote').value='';
-}
-function renderDebts(){
-  let totalUnpaid = debts.filter(d=>!d.paid).reduce((a,d)=>a+d.amount,0);
-  document.getElementById('totalDebt').innerText = 'Total owing you: ₦' + totalUnpaid.toLocaleString();
-  let html='';
-  debts.forEach((d,i)=>{
-    html += `<div class="product"><div><b>${d.name}</b> ${d.paid?'<span style="color:#25D366">PAID ✅</span>':''}<br><small>₦${d.amount} • ${d.note||''} • ${d.date}</small></div><div>${!d.paid?`<button class="btn-green" style="width:auto" onclick="markPaid(${i})">Mark Paid</button>`:''} <button class="btn-red" style="width:auto" onclick="deleteDebt(${i})">x</button></div></div>`;
-  });
-  document.getElementById('debtList').innerHTML = html || 'No debts';
-}
+function showReceiptByIndex(idx){ showReceipt(sales[idx]); }
+function clearSales(){ if(confirm('Clear all sales?')){ sales=[]; saveAll(); renderAll(); } }
+function shareReport(){ let today=new Date().toLocaleDateString(); let ts=sales.filter(s=>s.date.includes(today)); let total=ts.reduce((a,s)=>a+s.total,0); let text=`📊 ${shop.name} - Sales ${today}\nTotal: ₦${total}\nSales: ${ts.length}`; window.open('https://wa.me/?text='+encodeURIComponent(text)); }
+function addDebt(){ let n=document.getElementById('debtName').value.trim(); let a=parseInt(document.getElementById('debtAmount').value); if(!n||!a){alert('Enter name and amount');return;} debts.unshift({name:n,amount:a,note:document.getElementById('debtNote').value,date:new Date().toLocaleDateString(),paid:false}); saveAll(); renderAll(); document.getElementById('debtName').value='';document.getElementById('debtAmount').value='';document.getElementById('debtNote').value=''; }
+function renderDebts(){ let total=debts.filter(d=>!d.paid).reduce((a,d)=>a+d.amount,0); document.getElementById('totalDebt').innerText='Total owing you: ₦'+total.toLocaleString(); let html=''; debts.forEach((d,i)=>{ html+=`<div class="product"><div><b>${d.name}</b> ${d.paid?'<span style="color:#25D366">PAID ✅</span>':''}<br><small>₦${d.amount} • ${d.note||''} • ${d.date}</small></div><div>${!d.paid?`<button class="btn-green" style="width:auto" onclick="markPaid(${i})">Paid</button>`:''} <button class="btn-red" style="width:auto" onclick="deleteDebt(${i})">x</button></div></div>`; }); document.getElementById('debtList').innerHTML=html||'No debts'; }
 function markPaid(i){ debts[i].paid=true; saveAll(); renderAll(); }
 function deleteDebt(i){ debts.splice(i,1); saveAll(); renderAll(); }
-
 function renderAll(){ renderProducts(); renderCart(); renderSales(); renderDebts(); }
 init();
 </script>
